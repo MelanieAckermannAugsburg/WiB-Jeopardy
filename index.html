@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WiB Jeopardy – Wirtschaft und Beruf</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: linear-gradient(135deg, #0a0a2e 0%, #1a1a5e 50%, #0d0d3d 100%);
+min-height: 100vh;
+    color: white;
+    padding: 20px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 2.2em;
+    color: #FFD700;
+    text-shadow: 0 0 20px rgba(255,215,0,0.5), 2px 2px 4px rgba(0,0,0,0.8);
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+.subtitle {
+    text-align: center;
+    color: #aaa;
+    margin-bottom: 20px;
+    font-size: 0.95em;
+  }
+  .turn-indicator {
+    text-align: center;
+    margin-bottom: 14px;
+    font-size: 1em;
+    color: #aaa;
+  }
+  .turn-indicator span {
+    color: #FFD700;
+    font-weight: bold;
+    font-size: 1.15em;
+  }
+  .scoreboard {
+    display: flex;
+  justify-content: center;
+    gap: 30px;
+    margin-bottom: 20px;
+  }
+  .team-score {
+    background: rgba(255,215,0,0.05);
+    border: 2px solid #444;
+    border-radius: 12px;
+    padding: 12px 30px;
+  text-align: center;
+    min-width: 160px;
+    transition: all 0.3s ease;
+  }
+  .team-score.active {
+    background: rgba(255,215,0,0.15);
+ border-color: #FFD700;
+    box-shadow: 0 0 18px rgba(255,215,0,0.35);
+    transform: scale(1.05);
+  }
+  .team-name input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid #FFD700;
+    color: #FFD700;
+    font-size: 1em;
+    font-weight: bold;
+    text-align: center;
+    width: 120px;
+    outline: none;
+  }
+  .score-value {
+    font-size: 2em;
+    font-weight: bold;
+    color: white;
+    margin-top: 4px;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    max-width: 1000px;
+    margin: 0 auto 20px auto;
+  }
+  .category-header {
+    background: linear-gradient(180deg, #1a3a8f, #0d2060);
+    border: 2px solid #FFD700;
+    border-radius: 8px;
+    padding: 14px 8px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 0.85em;
+    color: #FFD700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    min-height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .cell {
+    background: linear-gradient(180deg, #1a3a8f, #0d2060);
+    border: 2px solid #2a5abf;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    font-size: 1.6em;
+    font-weight: bold;
+    color: #FFD700;
+    cursor: pointer;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  }
+  .cell:hover:not(.answered) {
+    background: linear-gradient(180deg, #2a5abf, #1a3a8f);
+    border-color: #FFD700;
+    transform: scale(1.04);
+    box-shadow: 0 0 15px rgba(255,215,0,0.4);
+  }
+  .cell.answered {
+    background: #1a1a2e;
+    border-color: #333;
+    color: #333;
+    cursor: default;
+  transform: none;
+  }
+  .cell.correct { background: #0d3d1a; border-color: #2ecc71; color: #2ecc71; }
+  .cell.wrong   { background: #3d0d0d; border-color: #e74c3c; color: #e74c3c; }
+  .cell.skipped { background: #1a1a2e; border-color: #555; color: #555; }
+
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: linear-gradient(135deg, #0d2060, #1a3a8f);
+    border: 3px solid #FFD700;
+    border-radius: 16px;
+    padding: 40px;
+  max-width: 680px;
+ width: 100%;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(255,215,0,0.3);
+    animation: popIn 0.3s ease;
+  }
+  @keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+  .modal-turn-badge {
+    display: inline-block;
+    background: rgba(255,215,0,0.2);
+    border: 1px solid #FFD700;
+    border-radius: 20px;
+    padding: 4px 16px;
+    font-size: 0.85em;
+    color: #FFD700;
+    margin-bottom: 10px;
+  }
+  .modal-points   { font-size: 1.1em; color: #FFD700; margin-bottom: 6px; opacity: 0.8; }
+  .modal-category { font-size: 0.9em; color: #aaa; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
+  .modal-question { font-size: 1.4em; font-weight: bold; color: white; margin-bottom: 30px; line-height: 1.5; }
+  .modal-answer {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,215,0,0.3);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+    color: #90EE90;
+    font-size: 1.1em;
+    line-height: 1.6;
+    display: none;
+    text-align: left;
+    white-space: pre-line;
+  }
+  .modal-answer.visible { display: block; }
+  .btn {
+    padding: 12px 28px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1em;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin: 5px;
+  }
+  .btn-show    { background: linear-gradient(135deg, #FFD700, #FFA500); color: #000; }
+  .btn-show:hover { transform: scale(1.05); box-shadow: 0 4px 15px rgba(255,215,0,0.4); }
+  .btn-correct { background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; }
+  .btn-correct:hover { transform: scale(1.05); }
+  .btn-wrong   { background: linear-gradient(135deg, #c0392b, #e74c3c); color: white; }
+  .btn-wrong:hover { transform: scale(1.05); }
+  .btn-skip    { background: rgba(255,255,255,0.1); color: #aaa; border: 1px solid #555; }
+  .btn-skip:hover { background: rgba(255,255,255,0.2); color: white; }
+
+  .action-buttons { display: none; margin-top: 15px; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .action-buttons.visible { display: flex; }
+
+  .controls { text-align: center; margin-top: 10px; }
+  .btn-reset {
+    background: rgba(255,255,255,0.1); color: #aaa; border: 1px solid #555;
+    padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 0.9em; transition: all 0.2s;
+  }
+  .btn-reset:hover { background: rgba(255,255,255,0.2); color: white; }
+
+  .progress-bar-wrap {
+    max-width: 1000px; margin: 0 auto 15px auto;
+    background: rgba(255,255,255,0.1); border-radius: 10px; height: 8px; overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%; background: linear-gradient(90deg, #FFD700, #FFA500);
+    border-radius: 10px; transition: width 0.5s ease; width: 0%;
+  }
+  .progress-text { text-align: center; font-size: 0.8em; color: #aaa; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<h1>🎓 WiB Jeopardy</h1>
+<p class="subtitle">Wirtschaft und Beruf – Klasse 9</p>
+
+<div class="scoreboard">
+  <div class="team-score active" id="team1-card">
+    <div class="team-name"><input type="text" id="team1-name" value="Team 1" maxlength="12" oninput="refreshTurnUI()"></div>
+    <div class="score-value" id="team1-score">0</div>
+    <div style="font-size:0.75em;color:#aaa;">Punkte</div>
+  </div>
+  <div class="team-score" id="team2-card">
+    <div class="team-name"><input type="text" id="team2-name" value="Team 2" maxlength="12" oninput="refreshTurnUI()"></div>
+    <div class="score-value" id="team2-score">0</div>
+    <div style="font-size:0.75em;color:#aaa;">Punkte</div>
+  </div>
+</div>
+
+<div class="turn-indicator" id="turn-indicator">🎯 Jetzt wählt: <span id="turn-name">Team 1</span></div>
+
+<div class="progress-text" id="progress-text">0 von 25 Fragen beantwortet</div>
+<div class="progress-bar-wrap"><div class="progress-bar" id="progress-bar"></div></div>
+
+<div class="board" id="board"></div>
+
+<div class="controls">
+  <button class="btn-reset" onclick="resetGame()">🔄 Spiel zurücksetzen</button>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeOnOverlay(event)">
+  <div class="modal" id="modal">
+    <div class="modal-turn-badge" id="modal-turn-badge">🎯 Team 1 ist dran</div>
+    <div class="modal-points"   id="modal-points"></div>
+    <div class="modal-category" id="modal-category"></div>
+ <div class="modal-question" id="modal-question"></div>
+    <div class="modal-answer"   id="modal-answer"></div>
+
+    <div id="step-show">
+      <button class="btn btn-show" onclick="showAnswer()">💡 Antwort anzeigen</button>
+    </div>
+
+    <div class="action-buttons" id="action-buttons">
+      <button class="btn btn-correct" onclick="markResult(true)">✓ Richtig (+Punkte)</button>
+      <button class="btn btn-wrong"   onclick="markResult(false)">✗ Falsch (−Punkte)</button>
+      <button class="btn btn-skip"    onclick="skipQuestion()">↷ Überspringen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const categories = [
+  "📋 Ausbildung & Beruf",
+  "🏥 Sozialversicherung",
+  "🏦 Geld & Bank",
+  "🚀 Zukunft der Arbeit",
+  "💼 Bewerbung & Gespräch"
+];
+
+const questions = [
+  [
+    { q: "Nenne eine Pflicht des Ausbilders.", a: "z.B. Ausbildungsinhalte vermitteln, angemessene Vergütung bezahlen, Ausbildungsmittel bereitstellen, Urlaub gewähren, Berichtsheft kontrollieren, Zeugnis ausstellen" },
+    { q: "Nenne eine Pflicht des Auszubildenden.", a: "z.B. Lernpflicht, Berufsschulpflicht, Weisungen befolgen, Sorgfaltspflicht, Berichtsheft führen, Betriebsgeheimnisse wahren" },
+    { q: "Nenne 3 Punkte, die ein Ausbildungsvertrag enthalten muss.", a: "z.B. Berufsbezeichnung, Beginn und Ende der Ausbildung, Probezeit (1–4 Monate), Arbeitsort, regelmäßige tägliche Arbeitszeit, Vergütung, Urlaub" },
+    { q: "Was ist ein Dienstleistungsberuf? Nenne ein Beispiel.", a: "Eine Arbeit, bei der keine Waren hergestellt werden, sondern für Menschen gearbeitet wird.\nBeispiel: Friseur:in, Busfahrer:in, Altenpfleger:in, Fitnesstrainer:in" },
+    { q: "Welche 3 Möglichkeiten hat Nico (15 Jahre, Mittelschulabschluss) nach der Schule?", a: "z.B. Duale Ausbildung, Ausbildung an einer Berufsfachschule, Freiwilliges Soziales Jahr, Berufsvorbereitungsjahr (BvB), Berufsgrundschuljahr" }
+  ],
+  [
+    { q: "Wie heißt die Sozialversicherung, die bei Krankheit zuständig ist?", a: "Krankenversicherung" },
+    { q: "Wie heißt die Sozialversicherung, die bei Jobverlust zahlt?", a: "Arbeitslosenversicherung" },
+    { q: "Herr Ratgeber verletzt sich während der Arbeit an einer Maschine. Welche Versicherung ist zuständig?", a: "Unfallversicherung" },
+  { q: "Frau Hofer braucht täglich Unterstützung bei der Körperpflege. Welche Versicherung hilft ihr?", a: "Pflegeversicherung" },
+    { q: "Nenne alle 5 Sozialversicherungen!", a: "1. Rentenversicherung\n2. Krankenversicherung\n3. Arbeitslosenversicherung\n4. Pflegeversicherung\n5. Unfallversicherung" }
+  ],
+  [
+    { q: "Nenne eine Aufgabe einer Bank.", a: "z.B. Konten verwalten, Überweisungen ausführen, Kredite vergeben, Sparmöglichkeiten anbieten, Beratung, Währungen wechseln" },
+    { q: "Nenne einen Vorteil der Bezahlung mit der Bankkarte.", a: "z.B. schnell, sicher, hygienischer als Bargeld" },
+    { q: "Nenne einen Nachteil der Bezahlung mit der Bankkarte.", a: "z.B. Man kann den Überblick verlieren, System kann ausfallen, nicht überall möglich (z.B. Flohmarkt)" },
+    { q: "Was ist der Unterschied zwischen Dauerauftrag und Lastschrift?", a: "Dauerauftrag: Du gibst den Auftrag selbst, gleicher Betrag jeden Monat, z.B. Miete.\nLastschrift: Die Firma holt sich das Geld von deinem Konto, oft unterschiedliche Beträge, z.B. Handykosten" },
+  { q: "Nenne 3 Möglichkeiten, ohne Bargeld zu bezahlen.", a: "z.B. EC-Karte/Girocard, Kreditkarte (Visa, Mastercard), Online-Bezahldienste (PayPal, Klarna), Handy-Zahlung (Apple Pay, Google Pay), Überweisung" }
+  ],
+  [
+    { q: "Was ist eine Schlüsselqualifikation? Nenne ein Beispiel.", a: "Fähigkeiten, die in vielen Berufen wichtig sind.\nz.B. Teamfähigkeit, Flexibilität, Lernbereitschaft, Kommunikationsfähigkeit, Mobilität" },
+    { q: "Erkläre Teamfähigkeit als Schlüsselqualifikation.", a: "Ich kann gut mit anderen zusammenarbeiten: zuhören, helfen, Konflikte lösen, zuverlässig Aufgaben übernehmen." },
+    { q: "Warum haben Altenpfleger:innen eine gute Zukunft?", a: "Die Menschen werden immer älter, der Bedarf an Pflege steigt. Kein Roboter kann diese Arbeit vollständig übernehmen – sie muss von Menschen gemacht werden." },
+    { q: "Erkläre Flexibilität als Schlüsselqualifikation.", a: "Ich kann mich gut an Veränderungen anpassen, z.B. andere Arbeitszeiten, neue Aufgaben übernehmen oder neue Computerprogramme lernen." },
+    { q: "Warum wird Kommunikationsfähigkeit im Beruf immer wichtiger?", a: "Viel Arbeit wird von KI und Maschinen übernommen. Die Arbeit mit Menschen wird daher wichtiger – und damit die Fähigkeit, mündlich und schriftlich zu kommunizieren." }
+  ],
+  [
+    { q: "Was sollte man im Vorstellungsgespräch auf die Frage nach den Stärken antworten?", a: "Ehrlich antworten und Stärken mit konkreten Beispielen belegen.\nz.B.: 'Meine Stärke ist Teamfähigkeit. Ich spiele in einer Fußballmannschaft und muss mich dort auf andere verlassen.'" },
+    { q: "Warum sparen Menschen? Nenne einen Grund.", a: "z.B. Für die Zukunft (Auszug von zu Hause), für Notfälle (kaputte Waschmaschine), für große Anschaffungen, um andere zu unterstützen, um Vermögen aufzubauen" },
+    { q: "Heidi möchte ihre Miete pünktlich überweisen. Dauerauftrag oder Lastschrift – was passt und warum?", a: "Dauerauftrag – der Betrag ist jeden Monat gleich und wird immer zum selben Zeitpunkt überwiesen. Den Auftrag gibt Heidi selbst als Kontoinhaberin." },
+    { q: "Nenne zwei Berufe mit guter Zukunft und erkläre warum.", a: "z.B. Elektroniker:in: Solaranlagen, Smart Home – wird auch in Zukunft von Menschen gemacht.\nErzieher:in: Kinderbetreuung wird immer wichtiger, viele Eltern sind berufstätig." },
+    { q: "Was versteht man unter dem Begriff 'Dienstleistung'? Erkläre und nenne 2 Beispiele.", a: "Eine Dienstleistung ist eine Arbeit, bei der keine Waren oder Produkte hergestellt werden. Es ist eine Arbeit für Menschen.\nBeispiele: Friseur:in, Busfahrer:in, Altenpfleger:in, Fitnesstrainer:in" }
+  ]
+];
+
+const points = [100, 200, 300, 400, 500];
+let scores   = [0, 0];
+let answered      = Array.from({length: 5}, () => Array(5).fill(null));
+let currentCell   = null;
+let answeredCount = 0;
+let activeTeam    = 0;
+
+function teamName(idx) {
+  return document.getElementById(`team${idx + 1}-name`).value.trim() || `Team ${idx + 1}`;
+}
+
+function refreshTurnUI() {
+  document.getElementById('team1-card').classList.toggle('active', activeTeam === 0);
+  document.getElementById('team2-card').classList.toggle('active', activeTeam === 1);
+  document.getElementById('turn-name').textContent = teamName(activeTeam);
+  document.getElementById('modal-turn-badge').textContent = `🎯 ${teamName(activeTeam)} ist dran`;
+}
+
+function switchTeam() {
+  activeTeam = activeTeam === 0 ? 1 : 0;
+  refreshTurnUI();
+}
+
+function buildBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  categories.forEach(cat => {
+    const h = document.createElement('div');
+    h.className = 'category-header';
+    h.textContent = cat;
+    board.appendChild(h);
+  });
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      const cell = document.createElement('div');
+ cell.className = 'cell';
+      cell.id = `cell-${col}-${row}`;
+      const state = answered[col][row];
+    if (state === null) {
+        cell.textContent = points[row];
+        cell.onclick = () => openQuestion(col, row);
+   } else {
+   cell.classList.add('answered');
+        if (state === 'correct')  { cell.classList.add('correct'); cell.textContent = '✓'; }
+        else if (state === 'wrong') { cell.classList.add('wrong');cell.textContent = '✗'; }
+        else            { cell.classList.add('skipped'); cell.textContent = '–'; }
+      }
+      board.appendChild(cell);
+    }
+  }
+}
+
+function openQuestion(col, row) {
+  if (answered[col][row] !== null) return;
+  currentCell = { col, row };
+  const q = questions[col][row];
+  document.getElementById('modal-points').textContent   = `💰 ${points[row]} Punkte`;
+  document.getElementById('modal-category').textContent = categories[col];
+  document.getElementById('modal-question').textContent = q.q;
+  const ansEl = document.getElementById('modal-answer');
+  ansEl.textContent = q.a;
+  ansEl.classList.remove('visible');
+  document.getElementById('step-show').style.display = 'block';
+  document.getElementById('action-buttons').classList.remove('visible');
+  refreshTurnUI();
+  document.getElementById('modal-overlay').classList.add('active');
+}
+
+function showAnswer() {
+  document.getElementById('modal-answer').classList.add('visible');
+  document.getElementById('step-show').style.display = 'none';
+  document.getElementById('action-buttons').classList.add('visible');
+}
+
+function markResult(correct) {
+  const { col, row } = currentCell;
+  const pts = points[row];
+  if (correct) {
+    scores[activeTeam] += pts;
+    answered[col][row] = 'correct';
+  } else {
+    scores[activeTeam] = Math.max(0, scores[activeTeam] - pts);
+    answered[col][row] = 'wrong';
+  }
+  answeredCount++;
+  updateScores();
+  updateProgress();
+  buildBoard();
+  switchTeam();
+  closeModal();
+}
+
+function skipQuestion() {
+  const { col, row } = currentCell;
+  answered[col][row] = 'skipped';
+  answeredCount++;
+  updateProgress();
+  buildBoard();
+  switchTeam();
+  closeModal();
+}
+
+function updateScores() {
+  document.getElementById('team1-score').textContent = scores[0];
+  document.getElementById('team2-score').textContent = scores[1];
+}
+
+function updateProgress() {
+  document.getElementById('progress-text').textContent = `${answeredCount} von 25 Fragen beantwortet`;
+  document.getElementById('progress-bar').style.width  = `${(answeredCount / 25) * 100}%`;
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+  currentCell = null;
+}
+
+function closeOnOverlay(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function resetGame() {
+  if (!confirm('Spiel wirklich zurücksetzen?')) return;
+  scores        = [0, 0];
+  answered      = Array.from({length: 5}, () => Array(5).fill(null));
+  answeredCount = 0;
+  activeTeam    = 0;
+  updateScores();
+  updateProgress();
+  refreshTurnUI();
+  buildBoard();
+}
+
+buildBoard();
+refreshTurnUI();
+</script>
+</body>
+</html>
